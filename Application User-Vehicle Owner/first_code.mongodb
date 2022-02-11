@@ -1,0 +1,189 @@
+//Vehicle Owner - flexible and safe travel
+//User story 1
+//USE CASE 2.1 a (ride booking based on owner and travellers preference)
+
+// Select the database to use.
+
+from pymongo import MongoClient
+
+//from OWNER database
+
+//To check cars available
+
+use("carpool")
+db.owner.find({availability:"true"})
+
+//To offer ride as per owners specifications.
+
+use("carpool")
+
+//to offer ride at owners preffered time and date etc
+//the owner here has also mentioned that it is female only ride
+//creating another collection, inserting and saving the entries there
+
+db.owner_booking.insertOne({booking_id:"1011",owner_id:"91725",car_id:"89",date:("2021-07-23"),time:"3:30pm",city_starting_point:"Mannheim",
+start_lat: "48.5373555",start_lon: "9.2004305", city_desti_point: "Karlsruhe", desti_lat: "-6.6038889", desti_lon: "-69.9661586",
+female_only: "true", seats: "2", date: "22/01/2022", time: "2:35 PM"})
+
+db.owner_booking.find()
+
+//To check the Booking Details:
+
+use("carpool");
+db.owner_booking.find({booking_id:"1011"})
+
+//from TRAVELLER database
+//Created pipeline
+
+//project only the necessary fields
+
+use("carpool");
+db.traveller.aggregate(
+[
+    {
+        '$project': {
+            'traveller_id': 1, 
+            'first_name': 1, 
+            'last_name': 1, 
+            'age': 1, 
+            'gender': 1, 
+            'country': 1, 
+            'state': 1, 
+            'female_only': 1, 
+            'phone': 1, 
+            'city_starting_point': 1, 
+            'city_desti_point': 1, 
+            'date': 1, 
+            'time': 1
+        }
+
+// match the owner_booking entries with the traveller database on certain entries
+
+    }, {
+        '$match': {
+            '$and': [
+                {
+                    'city_starting_point': 'Mannheim'
+                }, {
+                    'city_desti_point': 'Karlsruhe'
+                }, {
+                    'date': '22/01/2022'
+                }
+            ]
+        }
+
+
+//Vehicle Owner - flexible and safe travel
+//User story 2
+//USE CASE 2.1 b
+//this is an example for one user case which says female only rides.
+
+    }, {
+        '$match': {
+            'female_only': 'true'
+        }
+
+//after the search is complete save it in another data base and name it 'matched_and_suggested'
+
+    }, {
+        '$out': 'matched_and_suggested'
+    }
+])
+
+//This complete set of results will be sent to the owner.
+//Among all the suggested travellers, owner will pick the one most suitable for his or her ride
+//this particular entry will then be added into a new database called 'accepted_travelled_list' with the booking id same as the owner_booking and status as 'accepted'
+// created pipeline
+
+use("carpool");
+db.traveller.aggregate(
+[
+    {
+        '$match': {
+            'traveller_id': '491'
+        }
+    }, {
+        '$addFields': {
+            'status': 'accepted'
+        }
+    }, {
+        '$addFields': {
+            'booking_id': '1011'
+        }
+    }, {
+        '$out': 'accepted_traveller_list'
+    }
+]
+
+//once the booking is confirmed change availability of owner to "booked"
+
+use("carpool")
+db.owner.updateMany({owner_id:91725},
+{
+    /**
+     * field: The field name
+     * expression: The expression.
+     */
+    $set: {
+      availability:"booked",
+      booking_id:"1011"
+
+    }
+})
+
+// Getting final booking details
+
+use('Carpool');
+db.owner_booking.aggregate([
+      {  $lookup: {
+      from: 'owner',
+      localField: 'owner_id',
+      foreignField: 'owner_id',
+      as: 'checkSer'
+    }},
+    {
+        /**
+         * query: The query in MQL.
+         */
+        $match: {
+          Car_ID: {$in: [89]},
+          Booking_ID: {$in: [1011]}
+        }
+    }
+])
+
+//getting complete owner details
+
+use('Carpool');
+db.owner.aggregate([
+      {  $lookup: {
+      from: 'accepted_traveller_list',
+      localField: 'booking_id',
+      foreignField: 'booking_id',
+      as: 'trip_owner_details'
+    }}, 
+])
+
+
+//Use case 2
+//Communication between owner and traveller
+
+Redis-cli
+
+//Traveller subscribes to the channel
+SUBSCRIBE 1011
+
+//Owner publishes to the channel
+PUBLISH 1011 “I am going to be late by half an hour please wait”
+
+//Publishes this onto the receivers
+ 
+
+
+
+
+
+
+
+
+
