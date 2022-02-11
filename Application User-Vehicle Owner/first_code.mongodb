@@ -42,20 +42,22 @@ db.traveller.aggregate(
 [
     {
         '$project': {
-            'traveller_id': 1, 
-            'first_name': 1, 
-            'last_name': 1, 
-            'age': 1, 
-            'gender': 1, 
-            'country': 1, 
-            'state': 1, 
-            'female_only': 1, 
-            'phone': 1, 
-            'city_starting_point': 1, 
-            'city_desti_point': 1, 
-            'date': 1, 
-            'time': 1
-        }
+traveller_id :1,
+first_name:1,
+last_name:1,
+age:1,
+gender:1,
+country:1,
+state:1,
+female_only:1,
+phone:1,
+city_starting_point:1,
+start_lat:1,
+start_lon:1,
+city_desti_point:1,
+date:1,
+time:1,
+}
 
 // match the owner_booking entries with the traveller database on certain entries
 
@@ -90,7 +92,30 @@ db.traveller.aggregate(
     }
 ])
 
-//This complete set of results will be sent to the owner.
+//a) One way of selecting automatically by finding out the nearest points
+//Once the matches are suggested to find nearby points via gps the below queries are used
+//The lat and lon details of the suggested documents will be entered and the most near by document will be selected
+
+db.geo_check.insertMany([{
+  traveller_id: "491",
+  location: { type: "Point", coordinates: [ 48.7226206, 9.1584836 ] }
+},{
+  name: "43",
+  location: { type: "Point", coordinates: [ 48.7643143, 9.1752629 ] }
+}]);
+//-- Create a special type of index to use the $near* functions
+db.places.createIndex( { location: "2dsphere" } )
+//-- Find the places that are >= 1km and <= 5km away
+db.places.find( {
+  location: { $near:{
+    $geometry: { type: "Point", coordinates: [ 48.5373555, 9.2004305 ] },
+    $minDistance: 100, // in meters
+    $maxDistance: 5000 // in meters
+  } }
+} )
+
+
+//b) Other way is the owner randomly accepts one suggestion
 //Among all the suggested travellers, owner will pick the one most suitable for his or her ride
 //this particular entry will then be added into a new database called 'accepted_travelled_list' with the booking id same as the owner_booking and status as 'accepted'
 // created pipeline
